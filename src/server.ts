@@ -1,32 +1,72 @@
-import fastify from 'fastify'
-import helmet from '@fastify/helmet'
-import cors from '@fastify/cors'
+import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import sensible from "@fastify/sensible";
+import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import { env } from "@/config/env.js";
 
+export async function buildServer(): Promise<FastifyInstance> {
+	const app = Fastify({
+		logger: {
+			level: env.LOG_LEVEL,
+			...(env.NODE_ENV === "development" && {
+				transport: {
+					target: "pino-pretty",
+					options: {
+						colorize: true,
+						translateTime: "HH:MM:ss",
+						ignore: "pid,hostname",
+					},
+				},
+			}),
+		},
+		genReqId: () => crypto.randomUUID(),
+	});
 
-const app = fastify({
-  logger: true
-})
+	await app.register(helmet);
+	await app.register(cors, {
+		origin: env.NODE_ENV === "production" ? false : "*",
+		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+	});
 
-app.register(
-  helmet,
-  { contentSecurityPolicy: false }
-)
+	await app.register(sensible);
 
-await app.register(cors, {
-  origin: "http//localhost:3000/"
-})
+	// Health check — usado por Docker, Kubernetes e load balancers
+	// para verificar se o servidor está vivo e pronto para receber tráfego
+	app.get("/health", async (_request, reply) => {
+		return reply.send({
+			status: "ok",
+			timestamp: new Date().toISOString(),
+			uptime: Math.floor(process.uptime()),
+			environment: env.NODE_ENV,
+		});
+	});
 
-app.get('/', async (request, reply) => {
-  reply.send({ hello: 'world' })
-})
+	// ── Handler global de erros ───────────────────────────────────────────────
+	// Qualquer erro não tratado cai aqui
+	// Garante que TODAS as respostas de erro têm o mesmo formato JSON
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    
+		const statusCode = error.statusCode ?? 500;
+		request.log.error(
+			{ err: error, statusCode },
+			"Erro não tratado na request",
+		);
 
+		const message =
+			statusCode >= 500 && env.NODE_ENV === "production"
+				? "Erro interno do servidor"
+				: error.message;
 
-const start = async () => {
-  try {
-    await app.listen({ port: 3000 })
-  } catch (err) {
-    app.log.error(err)
-    process.exit(1)
-  }
+		return reply.status(statusCode).send({
+			error: error.name ?? "Error",
+			message,
+			statusCode,
+		});
+	});
+
+	app.ready(() => {
+		app.log.info("Servidor pronto para receber requests");
+	});
+
+	return app;
 }
-start()
