@@ -3,6 +3,7 @@ import helmet from "@fastify/helmet";
 import sensible from "@fastify/sensible";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { env } from "@/config/env.js";
+import { rateLimitPlugin } from '@/plugins/rateLimit.js'
 
 export async function buildServer(): Promise<FastifyInstance> {
 	const app = Fastify({
@@ -22,16 +23,18 @@ export async function buildServer(): Promise<FastifyInstance> {
 		genReqId: () => crypto.randomUUID(),
 	});
 
+	// ── Plugins de segurança e utilitários ───────────────────────────────────
 	await app.register(helmet);
 	await app.register(cors, {
 		origin: env.NODE_ENV === "production" ? false : "*",
 		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 	});
 
-	await app.register(sensible);
+  await app.register(sensible);
+  
+  
+	await app.register(rateLimitPlugin)
 
-	// Health check — usado por Docker, Kubernetes e load balancers
-	// para verificar se o servidor está vivo e pronto para receber tráfego
 	app.get("/health", async (_request, reply) => {
 		return reply.send({
 			status: "ok",
@@ -42,8 +45,6 @@ export async function buildServer(): Promise<FastifyInstance> {
 	});
 
 	// ── Handler global de erros ───────────────────────────────────────────────
-	// Qualquer erro não tratado cai aqui
-	// Garante que TODAS as respostas de erro têm o mesmo formato JSON
   app.setErrorHandler((error: FastifyError, request, reply) => {
     
 		const statusCode = error.statusCode ?? 500;
