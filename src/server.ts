@@ -4,6 +4,8 @@ import sensible from "@fastify/sensible";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { env } from "@/config/env.js";
 import { rateLimitPlugin } from '@/plugins/rateLimit.js'
+import { proxyPlugin } from '@/plugins/proxy.js'
+import { authPlugin } from "./plugins/auth.js";
 
 export async function buildServer(): Promise<FastifyInstance> {
 	const app = Fastify({
@@ -31,9 +33,9 @@ export async function buildServer(): Promise<FastifyInstance> {
 	});
 
   await app.register(sensible);
-  
-  
-	await app.register(rateLimitPlugin)
+  await app.register(authPlugin)
+  await app.register(rateLimitPlugin);
+  await app.register(proxyPlugin, { prefix: '/v1' });
 
 	app.get("/health", async (_request, reply) => {
 		return reply.send({
