@@ -10,7 +10,7 @@ async function main() {
   try {
     await app.listen({
       port: env.PORT,
-      host: '127.0.0.1',
+      host: '0.0.0.0',
     })
   } catch (error) {
     app.log.error(error, 'Erro ao iniciar o servidor')

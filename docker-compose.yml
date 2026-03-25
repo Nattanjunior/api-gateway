@@ -1,22 +1,48 @@
+version: '3.9'
+
 services:
+  # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: api-gateway-redis
-
     ports:
-      - "6379:6379"
-
+      - '6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
-
-    # Dados persistem mesmo se o container reiniciar
     volumes:
       - redis-data:/data
-
     restart: unless-stopped
+
+  # ── API Gateway ────────────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: api-gateway
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: info
+      UPSTREAM_URL: http://upstream:4000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_FREE: 60
+      RATE_LIMIT_MAX_PRO: 600
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   redis-data:
