@@ -23,7 +23,7 @@ git clone https://github.com/SEU_USUARIO/api-gateway
 npm install
 
 # Copie e configure o .env
-cp .env.example .env
+`cp .env.example .env`
 
 # Suba o Redis
 docker compose up -d redis
