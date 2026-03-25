@@ -15,22 +15,21 @@ Gateway HTTP com rate limiting distribuído (Sliding Window), autenticação por
 
 ## Como rodar localmente
 
-\`\`\`bash
-# Clone o repositório
-git clone https://github.com/SEU_USUARIO/api-gateway
+bash
+## Clone o repositório
+```git clone https://github.com/SEU_USUARIO/api-gateway```
 
-# Instale as dependências
-npm install
+## Instale as dependências
+```npm install```
 
-# Copie e configure o .env
-`cp .env.example .env`
+## Copie e configure o .env
+``` cp .env.example .env ```
 
-# Suba o Redis
-docker compose up -d redis
+## Suba o Redis
+``` docker compose up -d redis ```
 
-# Rode em modo desenvolvimento
-npm run dev
-\`\`\`
+## Rode em modo desenvolvimento
+``` npm run dev ```
 
 ## Endpoints
 
